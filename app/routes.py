@@ -1,18 +1,16 @@
 
 from flask import Blueprint, jsonify, request, make_response
-from flask.globals import session
 from app import db
 from app.models.video import Video
 from app.models.customer import Customer
+from app.models.rental import Rental
 from datetime import datetime
-import requests
-from dotenv import load_dotenv
-import os 
+import datetime
 
-load_dotenv()
 
 videos_bp = Blueprint("videos", __name__, url_prefix="/videos")
 customer_bp = Blueprint("customer_bp", __name__,url_prefix="/customers")
+rental_bp = Blueprint("rental_bp", __name__,url_prefix="/rentals")
 
 #VIDEO ROUTES
 
@@ -109,7 +107,7 @@ def handle_customers():
             name = request_body["name"],
             postal_code = request_body["postal_code"],
             phone = request_body["phone"],
-            registered_at = datetime.utcnow()
+            registered_at = datetime.datetime.utcnow()
         )
         db.session.add(new_customer)
         db.session.commit()
@@ -162,3 +160,68 @@ def handle_customer(customer_id):
             "id": customer.customer_id,
             "details": f"Customer {customer.name} successfully deleted"
         }), 200
+
+#RENTAL ROUTES
+
+@rental_bp.route("/check-out", methods = ["POST"])
+def handle_checkout():
+    
+    if request.method == "POST":
+        request_body = request.get_json()
+        if "customer_id" not in request_body:
+            return ({
+                "details": "Request body must include customer_id."
+            }),400
+        elif "video_id" not in request_body:
+            return ({
+                "details": "Request body must include video_id."
+            }),400
+        
+        new_rental = Rental(
+            customer_id = request_body["customer_id"],
+            video_id = request_body["video_id"]
+        )
+        target_video = Video.query.get(new_rental.video_id)
+        
+        if not target_video:
+            return "Video_id doesn't exist",404
+        target_customer = Customer.query.get(new_rental.customer_id)
+        
+        if not target_customer:
+            return "Customer_id doesn't exist",404
+        
+        total_inventory = Video.query.get(new_rental.video_id).total_inventory
+        if  total_inventory<=1:
+            return ({"message": "Could not perform checkout"}),400
+    
+        videos_checked_out_count = 1
+        db.session.add(new_rental)
+        db.session.commit()
+        return ({
+            "customer_id": new_rental.customer_id,
+            "video_id": new_rental.video_id,
+            "due_date": datetime.datetime.now() - datetime.timedelta(days=7),
+            "videos_checked_out_count": videos_checked_out_count,
+            "available_inventory": total_inventory - videos_checked_out_count
+
+        }),200
+
+@customer_bp.route("/<customer_id>/rentals", methods = ["GET"])
+def handle_rentals_by_id(customer_id):
+    if not customer_id.isnumeric():
+        return { "Error": f"{customer_id} must be numeric."}, 400
+    customer_id = int(customer_id)
+    customer = Customer.query.get(customer_id)
+    if not customer:
+        return ({"message": f"Customer {customer_id} was not found"}),404
+
+    if request.method == "GET":
+        rentals_response = []
+        for video in customer.videos:
+            rentals_response.append({
+                "title": video.title,
+                "release_date": video.release_date,
+                "due_date":Rental.query.get(customer_id).due_date
+            })
+            print(rentals_response)
+        return jsonify(rentals_response)

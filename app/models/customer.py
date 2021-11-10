@@ -4,13 +4,12 @@ from datetime import datetime
 
 class Customer(db.Model):
     __tablename__ = "Customers"
-    customer_id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, primary_key=True, autoincrement = True)
     name = db.Column(db.String)
     registered_at = db.Column(db.DateTime,nullable=True)
     postal_code = db.Column(db.String)
     phone = db.Column(db.String)
-    # video = db.relationship("Video", backref="customers")
-    # rental = db.relationship("Rental", secondary="Rentals", backref="customers")
+    videos = db.relationship("Video", secondary="Rentals", backref="customers")
 
 
     def to_dict(self):
