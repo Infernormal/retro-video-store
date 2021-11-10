@@ -191,7 +191,7 @@ def handle_checkout():
             return "Customer_id doesn't exist",404
         
         total_inventory = Video.query.get(new_rental.video_id).total_inventory
-        if  total_inventory<=1:
+        if  total_inventory == 0:
             return ({"message": "Could not perform checkout"}),400
     
         videos_checked_out_count = 1
