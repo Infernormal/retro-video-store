@@ -10,7 +10,6 @@ class Rental(db.Model):
     available_inventory = db.Column(db.Integer)
     customer_id = db.Column(db.Integer, db.ForeignKey("Customers.customer_id"),nullable=False)
     video_id= db.Column(db.Integer, db.ForeignKey("video.id"),nullable=False)
-    
 
 
 
