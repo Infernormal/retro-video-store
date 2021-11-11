@@ -9,7 +9,7 @@ class Customer(db.Model):
     registered_at = db.Column(db.DateTime,nullable=True)
     postal_code = db.Column(db.String)
     phone = db.Column(db.String)
-    videos = db.relationship("Video", secondary = "Rentals", backref = "Customers")
+    videos = db.relationship("Video", secondary = "Rentals", backref = "Customers",passive_deletes=True)
 
 
     def to_dict(self):
