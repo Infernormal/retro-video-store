@@ -40,6 +40,8 @@ def one_video(app):
         title=VIDEO_TITLE, 
         release_date=VIDEO_RELEASE_DATE,
         total_inventory=VIDEO_INVENTORY,
+        #This should be specified, but the null case is specified in the route.
+        available_inventory=VIDEO_INVENTORY,
         )
     db.session.add(new_video)
     db.session.commit()
@@ -49,7 +51,7 @@ def one_customer(app):
     new_customer = Customer(
         name=CUSTOMER_NAME,
         postal_code=CUSTOMER_POSTAL_CODE,
-        phone=CUSTOMER_PHONE
+        phone=CUSTOMER_PHONE,
     )
     db.session.add(new_customer)
     db.session.commit()
