@@ -9,9 +9,7 @@ class Customer(db.Model):
     registered_at = db.Column(db.DateTime,nullable=True)
     postal_code = db.Column(db.String)
     phone = db.Column(db.String)
-    #videos_checked_out should be an attribute of the customer that gets incremented or decremented during checkout
-    videos_checked_out_count = db.Column(db.Integer)    
-    videos = db.relationship("Video", secondary="Rentals", cascade="delete", backref=db.backref('Customers', lazy=True), passive_deletes=True)
+    videos = db.relationship("Video", secondary = "Rentals", backref = "Customers",passive_deletes=True)
 
 
     def to_dict(self):

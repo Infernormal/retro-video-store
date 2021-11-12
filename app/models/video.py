@@ -10,7 +10,7 @@ class Video(db.Model):
     #available_inventory should be an attribute of the video
     available_inventory = db.Column(db.Integer)
     total_inventory = db.Column(db.Integer)
-    customers = db.relationship("Customer", secondary="Rentals", cascade="delete", backref=db.backref('Videos', lazy=True), passive_deletes=True)
+    customers = db.relationship("Customer",secondary = "Rentals", backref = "Videos",passive_deletes=True)
 
 
     def to_dict(self):

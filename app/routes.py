@@ -164,7 +164,7 @@ def handle_customer(customer_id):
 #RENTAL ROUTES
 
 @rental_bp.route("/check-out", methods = ["POST"])
-def handle_checkout():   
+def handle_checkout():
     if request.method == "POST":
         request_body = request.get_json()
         if "customer_id" not in request_body:
@@ -175,61 +175,29 @@ def handle_checkout():
             return ({
                 "details": "Request body must include video_id."
             }),400
-        
-
-        #check that the video exists before attempting to create the rental
-        target_video = Video.query.get(request_body['video_id']) 
-        if not target_video:
-            return "Video_id doesn't exist",404
-
-        #check that the customer exists before attempting to create the rental
-        target_customer = Customer.query.get(request_body['customer_id'])
-        if not target_customer:
-            return "Customer_id doesn't exist",404
-
-        #check that the video is available in inventory
-        if  int(target_video.total_inventory) < 1:
-            return ({"message": "Could not perform checkout"}),400
-
-        if target_video.available_inventory is None:
-            target_video.available_inventory = 0
-        if  int(target_video.available_inventory) < 1:
-            return ({"message": "Could not perform checkout"}),400            
-    
-        #going to set this here in case we need to in the future allow for a customer to 
-        #check out more than one video
-        num_of_videos_getting_checked_out = 1
-
-        #Now that we are sure the related items exist, we create the rental record
         new_rental = Rental(
             customer_id = request_body["customer_id"],
-            video_id = request_body["video_id"],
-            due_date = (datetime.datetime.now() + datetime.timedelta(days=7))
+            video_id = request_body["video_id"]
         )
+        target_video = Video.query.get(new_rental.video_id)
+        if not target_video:
+            return "Video_id doesn’t exist",404
+        target_customer = Customer.query.get(new_rental.customer_id)
+        if not target_customer:
+            return "Customer_id doesn’t exist",404
+        total_inventory = Video.query.get(new_rental.video_id).total_inventory
+        checked_out_count = videos_checked_out_count(new_rental)
+        available_inventory = total_inventory - checked_out_count
+        if available_inventory == 0:
+            return ({"message": "Could not perform checkout"}),400
         db.session.add(new_rental)
-
-        #Now update the Customer to increment the videos_checked_out_count
-        if target_customer.videos_checked_out_count is None:
-            target_customer.videos_checked_out_count = 0
-        rental_customer_videos_count = int(target_customer.videos_checked_out_count) + num_of_videos_getting_checked_out
-        target_customer.videos_checked_out_count = rental_customer_videos_count
-        
-        #Now update the Video to decrement the available inventory
-
-        rental_video_available_inventory = int(target_video.available_inventory) - num_of_videos_getting_checked_out
-        target_video.available_inventory = rental_video_available_inventory
-
-        #Now save all the changes to the db (Rental, Customer, and Video)
         db.session.commit()
-
-
         return ({
             "customer_id": new_rental.customer_id,
             "video_id": new_rental.video_id,
-            "due_date": new_rental.due_date,
-            "videos_checked_out_count": target_customer.videos_checked_out_count,
-            "available_inventory": target_video.available_inventory
-
+            "due_date": datetime.datetime.now() - datetime.timedelta(days=7),
+            "videos_checked_out_count": videos_checked_out_count(new_rental),
+            "available_inventory": available_inventory - videos_checked_out_count(new_rental)
         }),200
 
 @rental_bp.route("/check-in", methods = ["POST"])
@@ -332,3 +300,9 @@ def handle_rentals_by_id(customer_id):
             })
             print(rentals_response)
         return jsonify(rentals_response)
+
+
+#HELPER FUNCTION
+
+def videos_checked_out_count(new_rental):
+    return len(db.session.query(Rental).filter(Rental.video_id == new_rental.video_id).all())
