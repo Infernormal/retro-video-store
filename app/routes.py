@@ -191,18 +191,21 @@ def handle_checkout():
             return "Customer_id doesn't exist",404
         
         total_inventory = Video.query.get(new_rental.video_id).total_inventory
-        if  total_inventory == 0:
+        checked_out_count = videos_checked_out_count(new_rental)
+        available_inventory = total_inventory - checked_out_count
+        
+        if available_inventory == 0:
             return ({"message": "Could not perform checkout"}),400
-    
-        videos_checked_out_count = 1
+            
         db.session.add(new_rental)
         db.session.commit()
+        
         return ({
             "customer_id": new_rental.customer_id,
             "video_id": new_rental.video_id,
             "due_date": datetime.datetime.now() - datetime.timedelta(days=7),
-            "videos_checked_out_count": videos_checked_out_count,
-            "available_inventory": total_inventory - videos_checked_out_count
+            "videos_checked_out_count": videos_checked_out_count(new_rental),
+            "available_inventory": available_inventory - videos_checked_out_count(new_rental)
 
         }),200
 
@@ -225,3 +228,9 @@ def handle_rentals_by_id(customer_id):
             })
             print(rentals_response)
         return jsonify(rentals_response)
+
+
+#HELPER FUNCTION
+
+def videos_checked_out_count(new_rental):
+    return len(db.session.query(Rental).filter(Rental.video_id == new_rental.video_id).all())
