@@ -40,7 +40,9 @@ def one_video(app):
         title=VIDEO_TITLE, 
         release_date=VIDEO_RELEASE_DATE,
         total_inventory=VIDEO_INVENTORY,
-        #This should be specified, but the null case is specified in the route.
+        #The tests won't work if we don't initiate the video with available inventory equal to the total inventoy.
+        #This is because we persist (and update) available_inventory on the video during check in/out
+        #so we don't waste cycles querying every rental record for a video to count them.
         available_inventory=VIDEO_INVENTORY,
         )
     db.session.add(new_video)
