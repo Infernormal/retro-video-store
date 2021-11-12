@@ -244,8 +244,8 @@ def handle_checkin():
         #Now update the Customer to decrement the videos_checked_out_count
         # if target_customer.videos_checked_out_count is None:
         #     target_customer.videos_checked_out_count = 0
-        rental_customer_videos_count = int(target_customer.videos_checked_out_count) - num_of_videos_getting_checked_in 
-        target_customer.videos_checked_out_count = rental_customer_videos_count
+        # rental_customer_videos_count = int(target_customer.videos_checked_out_count) - num_of_videos_getting_checked_in 
+        # target_customer.videos_checked_out_count = rental_customer_videos_count
         
         #Now update the Video to increment the available inventory
 
