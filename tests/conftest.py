@@ -49,7 +49,7 @@ def one_customer(app):
     new_customer = Customer(
         name=CUSTOMER_NAME,
         postal_code=CUSTOMER_POSTAL_CODE,
-        phone=CUSTOMER_PHONE
+        phone=CUSTOMER_PHONE,
     )
     db.session.add(new_customer)
     db.session.commit()

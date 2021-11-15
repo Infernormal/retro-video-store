@@ -2,9 +2,13 @@ from app import db
 #from app import current_app
 
 class Video(db.Model):
+    #specifying a tablename that is plural to match everywhere else.
+    #__tablename__ = "Videos"
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String)
     release_date = db.Column(db.DateTime)
+    #available_inventory should be an attribute of the video
+    available_inventory = db.Column(db.Integer)
     total_inventory = db.Column(db.Integer)
     customers = db.relationship("Customer",secondary = "Rentals", backref = "Videos",passive_deletes=True)
 
