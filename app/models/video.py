@@ -1,5 +1,4 @@
 from app import db
-#from app import current_app
 
 class Video(db.Model):
     #specifying a tablename that is plural to match everywhere else.
