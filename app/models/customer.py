@@ -1,6 +1,4 @@
-from flask import current_app
 from app import db
-from datetime import datetime
 
 class Customer(db.Model):
     __tablename__ = "Customers"
@@ -20,3 +18,4 @@ class Customer(db.Model):
             "postal_code": self.postal_code,
             "phone": self.phone
         })
+

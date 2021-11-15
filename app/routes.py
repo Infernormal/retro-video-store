@@ -1,4 +1,3 @@
-
 from flask import Blueprint, jsonify, request, make_response
 from app import db
 from app.models.video import Video
@@ -7,6 +6,7 @@ from app.models.rental import Rental
 from datetime import datetime
 import datetime
 
+#BLUEPRINTS 
 
 videos_bp = Blueprint("videos", __name__, url_prefix="/videos")
 customer_bp = Blueprint("customer_bp", __name__,url_prefix="/customers")
@@ -33,6 +33,7 @@ def create_videos():
             response.append(my_video.to_dict())
         
         return jsonify(response), 200
+
 
 @videos_bp.route("/<video_id>", methods=["GET", "PUT", "DELETE"], strict_slashes=False)
 def get_video(video_id):
@@ -70,20 +71,7 @@ def get_video(video_id):
             db.session.delete(my_video)
             db.session.commit()
             return make_response({"id":video_id}), 200
-
-
-def validate_video_input(request_body):
-    if "title" not in request_body:
-        return {"error":True, "details": "Request body must include title.", "status_code": 400}
-    elif "release_date" not in request_body:
-        return {"error":True, "details": "Request body must include release_date.", "status_code": 400}
-    elif "total_inventory" not in request_body:
-        return {"error":True, "details": "Request body must include total_inventory.", "status_code": 400}
-    else:
-        return {"error":False, "details": "", "status_code": 200}
-      
-
-customer_bp = Blueprint("customer_bp", __name__,url_prefix="/customers")
+ 
 
 #CUSTOMER ROUTES
 
@@ -107,7 +95,7 @@ def handle_customers():
             name = request_body["name"],
             postal_code = request_body["postal_code"],
             phone = request_body["phone"],
-            registered_at = datetime.datetime.utcnow()
+            registered_at = datetime.datetime.today()
         )
         db.session.add(new_customer)
         db.session.commit()
@@ -191,23 +179,24 @@ def handle_checkout():
             return "Customer_id doesn't exist",404
         
         total_inventory = Video.query.get(new_rental.video_id).total_inventory
-        checked_out_count = videos_checked_out_count(new_rental)
-        available_inventory = total_inventory - checked_out_count
+        existing_rentals = rentals_associated(new_rental)
+        available_inventory = total_inventory - existing_rentals
         
         if available_inventory == 0:
             return ({"message": "Could not perform checkout"}),400
-            
+
         db.session.add(new_rental)
         db.session.commit()
         
         return ({
             "customer_id": new_rental.customer_id,
             "video_id": new_rental.video_id,
-            "due_date": datetime.datetime.now() - datetime.timedelta(days=7),
+            "due_date": datetime.datetime.today() - datetime.timedelta(days=7),
             "videos_checked_out_count": videos_checked_out_count(new_rental),
-            "available_inventory": available_inventory - videos_checked_out_count(new_rental)
+            "available_inventory": available_inventory - rentals_associated(new_rental)
 
         }),200
+
 
 @customer_bp.route("/<customer_id>/rentals", methods = ["GET"])
 def handle_rentals_by_id(customer_id):
@@ -226,11 +215,84 @@ def handle_rentals_by_id(customer_id):
                 "release_date": video.release_date,
                 "due_date":Rental.query.get(customer_id).due_date
             })
-            print(rentals_response)
         return jsonify(rentals_response)
 
 
+@rental_bp.route("/check-in", methods = ["POST"])
+def handle_checkin():
+    if request.method == "POST":
+        request_body = request.get_json()
+        if "customer_id" not in request_body:
+            return ({
+                "details": "Request body must include customer_id."
+            }),400
+        elif "video_id" not in request_body:
+            return ({
+                "details": "Request body must include video_id."
+            }),400
+        #check that the video exists before attempting to return the rental
+        target_video = Video.query.get(request_body['video_id'])
+        if not target_video:
+            return "Video_id doesn't exist", 404
+        #check that the customer exists before attempting to return the rental
+        target_customer = Customer.query.get(request_body['customer_id'])
+        if not target_customer:
+            return "Customer_id doesn't exist", 404
+        
+        return_rental = Rental.query.filter_by(
+            customer_id = request_body["customer_id"],
+            video_id = request_body["video_id"]
+        ).first()
+        if return_rental is None:
+            return {"message": f"No outstanding rentals for customer {request_body['customer_id']} and video {request_body['video_id']}"}, 400
+        else:
+    
+            db.session.delete(return_rental)
+     
+        total_inventory = Video.query.get(return_rental.video_id).total_inventory
+        existing_rentals = rentals_associated(return_rental)
+        available_inventory = total_inventory - existing_rentals
+        
+        return ({
+            "customer_id": return_rental.customer_id,
+            "video_id": return_rental.video_id,
+            "videos_checked_out_count": videos_checked_out_count(return_rental),
+            "available_inventory": available_inventory
+        }),200
+
+@videos_bp.route("/<video_id>/rentals", methods = ["GET"])
+def handle_rentals_by_id(video_id):
+    if not video_id.isnumeric():
+        return { "Error": f"{video_id} must be numeric."}, 400
+    video_id = int(video_id)
+    video = Video.query.get(video_id)
+    if not video:
+        return ({"message":f"Video {video_id} was not found"}), 404
+    rentals_response = []
+    for customer in video.customers:
+        rentals_response.append({
+            "name": customer.name
+        })
+
+    return jsonify(rentals_response)
+
 #HELPER FUNCTION
 
-def videos_checked_out_count(new_rental):
-    return len(db.session.query(Rental).filter(Rental.video_id == new_rental.video_id).all())
+def rentals_associated(rental):
+    return len(db.session.query(Rental).filter(Rental.video_id == rental.video_id).all())
+
+
+def videos_checked_out_count(rental):
+    return len(db.session.query(Rental).filter(Rental.customer_id == rental.customer_id).all())
+
+
+def validate_video_input(request_body):
+    if "title" not in request_body:
+        return {"error":True, "details": "Request body must include title.", "status_code": 400}
+    elif "release_date" not in request_body:
+        return {"error":True, "details": "Request body must include release_date.", "status_code": 400}
+    elif "total_inventory" not in request_body:
+        return {"error":True, "details": "Request body must include total_inventory.", "status_code": 400}
+    else:
+        return {"error":False, "details": "", "status_code": 200}
+        
