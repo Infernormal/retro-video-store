@@ -71,7 +71,6 @@ def get_video(video_id):
             db.session.delete(my_video)
             db.session.commit()
             return make_response({"id":video_id}), 200
- 
 
 #CUSTOMER ROUTES
 
@@ -153,7 +152,6 @@ def handle_customer(customer_id):
 
 @rental_bp.route("/check-out", methods = ["POST"])
 def handle_checkout():
-    
     if request.method == "POST":
         request_body = request.get_json()
         if "customer_id" not in request_body:
@@ -164,20 +162,16 @@ def handle_checkout():
             return ({
                 "details": "Request body must include video_id."
             }),400
-        
         new_rental = Rental(
             customer_id = request_body["customer_id"],
             video_id = request_body["video_id"]
         )
         target_video = Video.query.get(new_rental.video_id)
-        
         if not target_video:
-            return "Video_id doesn't exist",404
+            return "Video_id doesn’t exist",404
         target_customer = Customer.query.get(new_rental.customer_id)
-        
         if not target_customer:
-            return "Customer_id doesn't exist",404
-        
+            return "Customer_id doesn’t exist",404
         total_inventory = Video.query.get(new_rental.video_id).total_inventory
         existing_rentals = rentals_associated(new_rental)
         available_inventory = total_inventory - existing_rentals
@@ -187,14 +181,12 @@ def handle_checkout():
 
         db.session.add(new_rental)
         db.session.commit()
-        
         return ({
             "customer_id": new_rental.customer_id,
             "video_id": new_rental.video_id,
             "due_date": datetime.datetime.today() - datetime.timedelta(days=7),
             "videos_checked_out_count": videos_checked_out_count(new_rental),
             "available_inventory": available_inventory - rentals_associated(new_rental)
-
         }),200
 
 
@@ -260,6 +252,7 @@ def handle_checkin():
             "available_inventory": available_inventory
         }),200
 
+      
 @videos_bp.route("/<video_id>/rentals", methods = ["GET"])
 def handle_rentals_by_id(video_id):
     if not video_id.isnumeric():
@@ -276,7 +269,7 @@ def handle_rentals_by_id(video_id):
 
     return jsonify(rentals_response)
 
-#HELPER FUNCTION
+#HELPER FUNCTIONS
 
 def rentals_associated(rental):
     return len(db.session.query(Rental).filter(Rental.video_id == rental.video_id).all())
