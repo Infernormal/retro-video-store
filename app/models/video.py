@@ -6,8 +6,6 @@ class Video(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String)
     release_date = db.Column(db.DateTime)
-    #available_inventory should be an attribute of the video
-    available_inventory = db.Column(db.Integer)
     total_inventory = db.Column(db.Integer)
     customers = db.relationship("Customer",secondary = "Rentals", backref = "Videos",passive_deletes=True)
 

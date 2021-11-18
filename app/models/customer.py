@@ -19,3 +19,28 @@ class Customer(db.Model):
             "phone": self.phone
         })
 
+#new helper functions
+
+    def create_customer_to_dict(self):
+         return ({
+            "name": f"{self.name}",
+            "phone": f"{self.phone}",
+            "postal_code": f"{self.postal_code}"
+         })
+   
+    def delete_customer_to_dict(self):
+       return ({
+            "id": self.customer_id,
+            "details": f"Customer {self.name} successfully deleted"
+        })
+    
+    #classmethod for fileds check
+
+    @classmethod
+    def check_customer_fields(cls, request_body):
+
+        required = ["name", "postal_code", "phone"]
+
+        for field in required:
+            if field not in request_body:
+                return { "details" : f"Request body must include {field}."}, 400

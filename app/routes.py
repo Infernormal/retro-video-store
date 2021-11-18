@@ -78,18 +78,10 @@ def get_video(video_id):
 def handle_customers():
     if request.method == "POST":
         request_body = request.get_json()
-        if "name" not in request_body:
-            return ({
-                "details": "Request body must include name."
-            }),400
-        elif "phone" not in request_body:
-            return ({
-                "details": "Request body must include phone."
-            }),400
-        elif "postal_code" not in request_body:
-            return ({
-                "details": "Request body must include postal_code."
-            }),400
+        #added fields check
+        check_fields = Customer.check_customer_fields(request_body)
+        if check_fields:
+            return check_fields
         new_customer = Customer(
             name = request_body["name"],
             postal_code = request_body["postal_code"],
@@ -123,30 +115,23 @@ def handle_customer(customer_id):
 
     elif request.method == "PUT":
         form_data = request.get_json()
-        if "name" not in form_data or "postal_code" not in form_data or "phone" not in form_data:
-            return ({
-                "details": "Invalid data"
-            }),400
+        #added fields check
+        check_fields = Customer.check_customer_fields(form_data)
+        if check_fields:
+            return check_fields
         customer.name = form_data['name']
         customer.postal_code = form_data['postal_code']
         customer.phone = form_data['phone']
 
         db.session.commit()
-
-        return ({
-            "name": f"{customer.name}",
-            "phone": f"{customer.phone}",
-            "postal_code": f"{customer.postal_code}"
-        }),200
+    #using new helper function
+        return customer.create_customer_to_dict(),200
 
     elif request.method == "DELETE":
         db.session.delete(customer)
         db.session.commit()
-
-        return ({
-            "id": customer.customer_id,
-            "details": f"Customer {customer.name} successfully deleted"
-        }), 200
+     #using new helper function
+        return customer.delete_customer_to_dict(), 200
 
 #RENTAL ROUTES
 
@@ -154,14 +139,11 @@ def handle_customer(customer_id):
 def handle_checkout():
     if request.method == "POST":
         request_body = request.get_json()
-        if "customer_id" not in request_body:
-            return ({
-                "details": "Request body must include customer_id."
-            }),400
-        elif "video_id" not in request_body:
-            return ({
-                "details": "Request body must include video_id."
-            }),400
+        #added fields check
+        check_fields = Rental.check_checkout_fields(request_body)
+        if check_fields:
+            return check_fields
+
         new_rental = Rental(
             customer_id = request_body["customer_id"],
             video_id = request_body["video_id"]
@@ -172,22 +154,17 @@ def handle_checkout():
         target_customer = Customer.query.get(new_rental.customer_id)
         if not target_customer:
             return "Customer_id doesn’t exist",404
-        total_inventory = Video.query.get(new_rental.video_id).total_inventory
-        existing_rentals = rentals_associated(new_rental)
-        available_inventory = total_inventory - existing_rentals
+        #Re-implemented  available inventory
+        
+        available_inventory = new_rental.get_available_inventory(new_rental.video_id)
         
         if available_inventory == 0:
             return ({"message": "Could not perform checkout"}),400
 
         db.session.add(new_rental)
         db.session.commit()
-        return ({
-            "customer_id": new_rental.customer_id,
-            "video_id": new_rental.video_id,
-            "due_date": datetime.datetime.today() - datetime.timedelta(days=7),
-            "videos_checked_out_count": videos_checked_out_count(new_rental),
-            "available_inventory": available_inventory - rentals_associated(new_rental)
-        }),200
+        #using new helper function
+        return jsonify(new_rental.to_dict_for_check_out()),200
 
 
 @customer_bp.route("/<customer_id>/rentals", methods = ["GET"])
@@ -240,17 +217,8 @@ def handle_checkin():
         else:
     
             db.session.delete(return_rental)
-     
-        total_inventory = Video.query.get(return_rental.video_id).total_inventory
-        existing_rentals = rentals_associated(return_rental)
-        available_inventory = total_inventory - existing_rentals
-        
-        return ({
-            "customer_id": return_rental.customer_id,
-            "video_id": return_rental.video_id,
-            "videos_checked_out_count": videos_checked_out_count(return_rental),
-            "available_inventory": available_inventory
-        }),200
+        #using new helper function
+        return jsonify(return_rental.to_dict_for_check_in()),200
 
       
 @videos_bp.route("/<video_id>/rentals", methods = ["GET"])
@@ -269,14 +237,7 @@ def handle_rentals_by_id(video_id):
 
     return jsonify(rentals_response)
 
-#HELPER FUNCTIONS
-
-def rentals_associated(rental):
-    return len(db.session.query(Rental).filter(Rental.video_id == rental.video_id).all())
-
-
-def videos_checked_out_count(rental):
-    return len(db.session.query(Rental).filter(Rental.customer_id == rental.customer_id).all())
+#HELPER FUNCTION
 
 
 def validate_video_input(request_body):
@@ -288,4 +249,6 @@ def validate_video_input(request_body):
         return {"error":True, "details": "Request body must include total_inventory.", "status_code": 400}
     else:
         return {"error":False, "details": "", "status_code": 200}
+
+
         
